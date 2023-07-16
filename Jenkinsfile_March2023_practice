@@ -1,0 +1,33 @@
+node{
+  def mavenHome = tool name: 'maven3.9.1'
+ stage('1.CodeClone'){
+    git 'https://github.com/kaylascho/maven-web-application'
+    }
+ stage('2.MavenBuild'){
+   sh "${mavenHome}/bin/mvn package"
+ }
+ stage('3.codeQuality'){
+   sh "${mavenHome}/bin/mvn sonar:sonar"
+ }
+  stage('4.UploadArtifacts'){
+   sh "${mavenHome}/bin/mvn deploy"
+ }
+   stage('5.deploy2UAT'){
+   deploy adapters: [tomcat9(credentialsId: 'TomcatCredential', path: '', url: 'http://172.31.13.122:8080/')], contextPath: null, war: 'target/*war'
+ }
+ stage('6.Manualapproval'){
+    sh "echo 'ready for review' "
+    timeout(time:30, unit:'MINUTES') {
+    input message: 'Application ready for deployment, Please review and approve'
+      }
+  }
+    stage('7.deploy2Prod'){
+   deploy adapters: [tomcat9(credentialsId: 'TomcatCredential', path: '', url: 'http://172.31.13.122:8080/')], contextPath: null, war: 'target/*war'
+ }
+  stage('8emailNotify'){
+    emailext body: '''The build is done.
+
+Thanks,
+Tigercat Enterprise.''', recipientProviders: [contributor(), developers()], subject: 'Build status', to: 'orimoloyekayode@yahoo.com'
+  }
+}
